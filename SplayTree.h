@@ -13,3 +13,5 @@ Node *Find(Node *root, int key);
 Node *CreateNode(int key);
 void SplayHelper(Node *node);
 void Splay(Node *node);
+int ValidateHelper(Node *root);
+int Validate(Node *root);
