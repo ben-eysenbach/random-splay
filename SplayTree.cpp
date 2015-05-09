@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <iostream>
 #include <cmath>
 #include <cassert>
@@ -82,11 +83,15 @@ Node *Find(Node *root, int key) {
     }
 }
 
-void Splay(Node *node) {
+Node *Splay(Node *root, Node *node) {
     // splays a node to root
+    int count = 0;
     while (node->parent) {
+        count++;
         SplayHelper(node);
     }
+    printf("%d\n", count);
+    return node;
 }
 
 void SplayHelper(Node *node) {
@@ -101,7 +106,8 @@ void SplayHelper(Node *node) {
         } else {
             // printf("has grandparent\n");
             Node *grandparent = parent->parent;
-            if (grandparent->left->left == node || grandparent->right->right == node) {
+            if ((grandparent->left && (grandparent->left->left == node)) ||
+                (grandparent->right && (grandparent->right->right == node))) {
                 Rotate(parent);
                 Rotate(node);
             } else { //grandparent->left->right == node || grandparent->right->left == node
@@ -111,6 +117,40 @@ void SplayHelper(Node *node) {
         }
     }
 }
+
+
+// Node *ProbSplay1(Node *root, Node *node, float prob) {
+//     // Splays node to root given probability; otherwise, does nothing
+//     if (rand() < prob * RAND_MAX) {
+//         return Splay(root, node);
+//     } else {
+//         return root;
+//     }
+// }
+
+// Node *ProbSplay2(Node *root, Node *node, float prob) {
+//     // There are a series of zig, zig-zig, zig-zag operations performed to splay a node to root. This function performs each with the given probability
+//     while (node->parent) {
+//         if (rand() < prob * RAND_MAX) {
+//             SplayHelper(node);
+//         } else {
+//             node = node->parent;
+//         }
+//     }
+//     return node;
+// }
+//
+// Node *ProbSplay3(Node *root, Node *node, float prob) {
+//     // Starts splaying given node up to root. At each operation, we flip a biased coin, and stop splaying after it lands on heads for the first time.
+//     while (node->parent) {
+//         if (rand() < prob * RAND_MAX) {
+//             SplayHelper(node);
+//         } else {
+//             return root;
+//         }
+//     }
+//     return node;
+// }
 
 int Validate(Node *root) {
     // confirms that the given node is the root of a valid BST
@@ -147,15 +187,70 @@ int ValidateHelper(Node *root) {
     return (left && right);
 }
 
+void Print(Node *node) {
+    if (node->parent) {
+        printf("parent:%d\n", node->parent->key);
+        if (node->parent->parent) {
+            printf("parent->parent:%d\n", node->parent->parent->key);
+        } else {
+            printf("parent->parent:NULL\n");
+        }
+    } else {
+        printf("parent:NULL\n");
+    }
+    printf("node:%d\n", node->key);
+    if (node->left) {
+        printf("left:%d\n", node->left->key);
+    } else {
+        printf("left:NULL\n");
+    }
+    if (node->right) {
+        printf("right:%d\n\n", node->right->key);
+    } else {
+        printf("right:NULL\n\n");
+    }
+}
+
+int Uniform(int low, int high) {
+    // returns a random integer between low and high, inclusive
+    int overflow = RAND_MAX % (high - low + 1);
+    int r = rand();
+    while (r > RAND_MAX - overflow) {
+        r = rand();
+    }
+    return r % (high - low + 1) + low;
+}
+
+int Geometric(float p, int max) {
+    // samples from the geometric distribution. Samples range from 1 to max, inclusive
+    int sample = max + 1;
+    while (sample > max) {
+        float x = ((float) rand()) / RAND_MAX;
+        sample = (int) ceil(log(x) / log(1 - p));
+    }
+    return sample;
+}
 
 int main(int argc, char** argv) {
-    int h = 10;
+    int h = 15;
+    Node *root = PerfectTree(h);
+
+    Node *node;
     int n = (int) pow(2, h+1) - 1;
-    for (int key = 1; key <= n; key++) {
-        Node *root = PerfectTree(h);
-        Node *node = Find(root, key);
-        Splay(node);
-        assert(Validate(node));
+    int key;
+
+    for (int i = 0; i < 100000; i++) {
+        key = Geometric(0.5, n);
+        // printf("key:%d\n", key);
+        node = Find(root, key);
+        // Print(node);
+        root = Splay(root, node);
+        // assert(root->key == key);
+        // assert(Validate(node));
     }
+    for (int i = 0; i <= n; i++) {
+        assert(Find(root, key));
+    }
+    // printf("Test passed!\n");
     return 0;
 }
