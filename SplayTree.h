@@ -1,6 +1,7 @@
 typedef struct Node Node;
 struct Node {
     int key;
+    int height;
     Node *left;
     Node *right;
     Node *parent;
@@ -20,4 +21,5 @@ Node *ProbSplay2(Node *root, Node *node, float prob);
 Node *ProbSplay3(Node *root, Node *node, float prob);
 void Print(Node *node);
 int Uniform(int low, int high);
-int Geometric(float p);
+int Geometric(float p, int high);
+int Zipf(int* bins);

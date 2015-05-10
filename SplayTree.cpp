@@ -3,6 +3,8 @@
 #include <iostream>
 #include <cmath>
 #include <cassert>
+#include <time.h>
+#include <limits.h>
 #include "SplayTree.h"
 
 Node *CreateNode(int key) {
@@ -70,12 +72,16 @@ Node *PerfectTreeHelper(int key, int h) {
 Node *Find(Node *root, int key) {
     // searches for and returns the node with a given key
     Node *node = root;
+    int height = 0;
     while (true) {
+        height += 1;
         if (node->left && node->key > key) {
             node = node->left;
         } else if (node->right && node->key < key) {
             node = node->right;
         } else if (node->key == key) {
+            // printf("%d,", count);
+            node->height = height;
             return node;
         } else {
             return NULL;
@@ -85,12 +91,12 @@ Node *Find(Node *root, int key) {
 
 Node *Splay(Node *root, Node *node) {
     // splays a node to root
-    int count = 0;
+    // int count = 0;
     while (node->parent) {
-        count++;
+        // count += 1;
         SplayHelper(node);
     }
-    printf("%d\n", count);
+    // printf("%d\n", count);
     return node;
 }
 
@@ -119,38 +125,44 @@ void SplayHelper(Node *node) {
 }
 
 
-// Node *ProbSplay1(Node *root, Node *node, float prob) {
-//     // Splays node to root given probability; otherwise, does nothing
-//     if (rand() < prob * RAND_MAX) {
-//         return Splay(root, node);
-//     } else {
-//         return root;
-//     }
-// }
+Node *ProbSplay1(Node *root, Node *node, float prob) {
+    // Splays node to root given probability; otherwise, does nothing
+    // for all Geo(p), best p_splay = 0.1
+    // This is the version used in Albers' paper
+    if (rand() < prob * RAND_MAX) {
+        return Splay(root, node);
+    } else {
+        return root;
+    }
+}
 
-// Node *ProbSplay2(Node *root, Node *node, float prob) {
-//     // There are a series of zig, zig-zig, zig-zag operations performed to splay a node to root. This function performs each with the given probability
-//     while (node->parent) {
-//         if (rand() < prob * RAND_MAX) {
-//             SplayHelper(node);
-//         } else {
-//             node = node->parent;
-//         }
-//     }
-//     return node;
-// }
-//
-// Node *ProbSplay3(Node *root, Node *node, float prob) {
-//     // Starts splaying given node up to root. At each operation, we flip a biased coin, and stop splaying after it lands on heads for the first time.
-//     while (node->parent) {
-//         if (rand() < prob * RAND_MAX) {
-//             SplayHelper(node);
-//         } else {
-//             return root;
-//         }
-//     }
-//     return node;
-// }
+Node *ProbSplay2(Node *root, Node *node, float prob) {
+    // There are a series of zig, zig-zig, zig-zag operations performed to splay a node to root. This function performs each with the given probability
+    // int count = 0;
+    while (node->parent) {
+        if (rand() < prob * RAND_MAX) {
+            // count += 1;
+            SplayHelper(node);
+        } else {
+            node = node->parent;
+        }
+    }
+    // printf("%d\n", count);
+    return node;
+}
+
+Node *ProbSplay3(Node *root, Node *node, float prob) {
+    // Starts splaying given node up to root. At each operation, we flip a biased coin, and stop splaying after it lands on heads for the first time.
+    // For
+    while (node->parent) {
+        if (rand() < prob * RAND_MAX) {
+            SplayHelper(node);
+        } else {
+            return root;
+        }
+    }
+    return node;
+}
 
 int Validate(Node *root) {
     // confirms that the given node is the root of a valid BST
@@ -213,44 +225,118 @@ void Print(Node *node) {
 
 int Uniform(int low, int high) {
     // returns a random integer between low and high, inclusive
-    int overflow = RAND_MAX % (high - low + 1);
-    int r = rand();
-    while (r > RAND_MAX - overflow) {
-        r = rand();
+    int diff = high - low + 1;
+    int exponent = ceil(log(diff) / log(RAND_MAX)); // how many random numbers do we need to use to get a single sample
+    int rand_max = pow(RAND_MAX, exponent);
+    int overflow = rand_max % diff;
+    int r = rand_max;
+    while (r > rand_max - overflow) {
+        r = 0;
+        for (int i = 0; i < exponent; i++) {
+            r += rand() * pow(RAND_MAX, i);
+        }
     }
-    return r % (high - low + 1) + low;
+    return r % (diff) + low;
 }
 
-int Geometric(float p, int max) {
-    // samples from the geometric distribution. Samples range from 1 to max, inclusive
-    int sample = max + 1;
-    while (sample > max) {
+int Geometric(float p, int high) {
+    // samples from the geometric distribution. Samples range from 1 to high, inclusive
+    assert(p > 0);
+    assert(p < 1);
+    int sample = high + 1;
+    while (sample > high) {
         float x = ((float) rand()) / RAND_MAX;
         sample = (int) ceil(log(x) / log(1 - p));
     }
     return sample;
 }
 
+int Zipf(int high) {
+    // samples from zipf distribution. Samples range from 1 to high, inclusive
+    static int initial = 1;
+    static float sum = 0;
+    if (initial) {
+        for (int i = 1; i <= high; i++) {
+            sum += 1.0 / i;
+        }
+        // printf("sum:%f\n", sum);
+        initial = 0;
+    }
+    float r = (sum * rand()) / RAND_MAX;
+    int i = 1;
+    while (r > 0) {
+        r -= 1.0 / i;
+        // printf("i:%d; r:%f\n", i, r);
+        i++;
+    }
+    return i - 1;
+}
+
 int main(int argc, char** argv) {
     int h = 15;
-    Node *root = PerfectTree(h);
 
     Node *node;
     int n = (int) pow(2, h+1) - 1;
     int key;
+    clock_t start, end;
+    Node *root = PerfectTree(h);
+    int num_samples = 100000;
+    int samples[num_samples];
+    for (int i = 0; i < num_samples; i++) {
+        samples[i] = Zipf(n);
+    }
+    // float p = 0;
+    // float p = pow(2, -3);
+    // float p = pow(2, -6);
+    // float p = pow(2, -9);
+    float p = pow(2, -15);
+    float q;
+    int height;
+    printf("p:%.5f\n", p);
+    start = clock();
+    for (int i = 0; i < num_samples; i++) {
+        // printf("Iter:%d\n", i);
 
-    for (int i = 0; i < 100000; i++) {
-        key = Geometric(0.5, n);
-        // printf("key:%d\n", key);
-        node = Find(root, key);
-        // Print(node);
-        root = Splay(root, node);
-        // assert(root->key == key);
-        // assert(Validate(node));
+        node = Find(root, samples[i]);
+        height = log(n);
+        q = (p * height) / (1 + p * height);
+        // printf("q:%.3f\n", q);
+        root = ProbSplay3(root, node, q);
+        // root = Splay(root, node); //42 sec
+        // end = clock();
+        // printf("%lu\n", end - start);
+        // start = end;
     }
-    for (int i = 0; i <= n; i++) {
-        assert(Find(root, key));
-    }
+    printf("Duration: %.3f\n", ((float)clock() - start) * 1000 / CLOCKS_PER_SEC);
+    assert(Validate(root));
     // printf("Test passed!\n");
+    //
+    // for (float p_geo = 0.1; p_geo <= 0.9; p_geo = p_geo + 0.1) {
+    //     int min = INT_MAX;
+    //     float best_p_splay = 0;
+    //     for (float p_splay = 0; p_splay <= 1; p_splay = p_splay + 0.1) {
+    //         printf("Uniform with P(splay)=%.1f\n", p_splay);
+    //         Node *root = PerfectTree(h);
+    //         clock_t start = clock();
+    //         for (int i = 0; i < 10000000; i++) {
+    //             key = Geometric(p_geo, n);
+    //             node = Find(root, key);
+    //             root = ProbSplay3(root, node, p_splay);
+    //             // assert(root->key == key);
+    //             // assert(Validate(node));
+    //         }
+    //         // for (int i = 0; i <= n; i++) {
+    //         //     assert(Find(root, key));
+    //         // }
+    //         float msec = (clock() - start) * 1000 / CLOCKS_PER_SEC;
+    //         if (msec < min) {
+    //             min = msec;
+    //             best_p_splay = p_splay;
+    //         }
+    //         // printf("Test passed!\n");
+    //         // printf("Duration: %.3f sec\n", msec / 1000);
+    //     }
+    //     printf("For p_geo=%.2f, best p_splay=%.2f\n\n", p_geo, best_p_splay);
+    // }
     return 0;
 }
