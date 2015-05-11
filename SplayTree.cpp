@@ -125,10 +125,22 @@ void SplayHelper(Node *node) {
 }
 
 
-Node *ProbSplay1(Node *root, Node *node, float prob) {
-    // Splays node to root given probability; otherwise, does nothing
-    // for all Geo(p), best p_splay = 0.1
-    // This is the version used in Albers' paper
+int RANDSPLAY1_SPLAYING;
+Node *RandSplay1(Node *root, Node *node, float prob) {
+    // Scheme in Tarjan and Sleator's paper
+    // Flips a coin after each access and stops splaying after it lands on heads
+    if (RANDSPLAY1_SPLAYING && (rand() < prob * RAND_MAX)) {
+        return Splay(root, node);
+    } else {
+        RANDSPLAY1_SPLAYING = 0;
+        return root;
+    }
+}
+
+
+Node *RandSplay2(Node *root, Node *node, float prob) {
+    // Scheme in Alber's paper
+    //  Splays node to root given probability; otherwise, does nothing
     if (rand() < prob * RAND_MAX) {
         return Splay(root, node);
     } else {
@@ -136,7 +148,7 @@ Node *ProbSplay1(Node *root, Node *node, float prob) {
     }
 }
 
-Node *ProbSplay2(Node *root, Node *node, float prob) {
+Node *RandSplay3(Node *root, Node *node, float prob) {
     // There are a series of zig, zig-zig, zig-zag operations performed to splay a node to root. This function performs each with the given probability
     // int count = 0;
     while (node->parent) {
@@ -151,7 +163,7 @@ Node *ProbSplay2(Node *root, Node *node, float prob) {
     return node;
 }
 
-Node *ProbSplay3(Node *root, Node *node, float prob) {
+Node *RandSplay4(Node *root, Node *node, float prob) {
     // Starts splaying given node up to root. At each operation, we flip a biased coin, and stop splaying after it lands on heads for the first time.
     // For
     while (node->parent) {
@@ -253,6 +265,7 @@ int Geometric(float p, int high) {
 
 int Zipf(int high) {
     // samples from zipf distribution. Samples range from 1 to high, inclusive
+    // There's a bug which sometimes lets Zipf() return n+1
     static int initial = 1;
     static float sum = 0;
     if (initial) {
@@ -269,74 +282,110 @@ int Zipf(int high) {
         // printf("i:%d; r:%f\n", i, r);
         i++;
     }
-    return i - 1;
+    if (i-1 <= high) {
+        return i-1;
+    } else {
+        return Zipf(high);
+    }
 }
 
 int main(int argc, char** argv) {
-    int h = 15;
+    int h = 16;
 
     Node *node;
     int n = (int) pow(2, h+1) - 1;
-    int key;
-    clock_t start, end;
+
+    printf("Building tree\n");
     Node *root = PerfectTree(h);
-    int num_samples = 100000;
-    int samples[num_samples];
+    int num_samples = 32 * n;
+    int *samples = new int[num_samples];
+
+    printf("Generating samples\n");
     for (int i = 0; i < num_samples; i++) {
         samples[i] = Zipf(n);
     }
-    // float p = 0;
-    // float p = pow(2, -3);
-    // float p = pow(2, -6);
-    // float p = pow(2, -9);
-    float p = pow(2, -15);
-    float q;
-    int height;
-    printf("p:%.5f\n", p);
-    start = clock();
-    for (int i = 0; i < num_samples; i++) {
-        // printf("Iter:%d\n", i);
 
-        node = Find(root, samples[i]);
-        height = log(n);
-        q = (p * height) / (1 + p * height);
-        // printf("q:%.3f\n", q);
-        root = ProbSplay3(root, node, q);
-        // root = Splay(root, node); //42 sec
-        // end = clock();
-        // printf("%lu\n", end - start);
-        // start = end;
+    float p;
+    float duration;
+    clock_t start, end;
+    printf("Starting tests\n");
+    duration = 0;
+    for (int j = 0; j < 100; j++) {
+        start = clock();
+        for (int i = 0; i < num_samples; i++) {
+            node = Find(root, samples[i]);
+            root = Splay(root, node);
+        }
+        end = clock();
+        duration += (end - start);
     }
-    printf("Duration: %.3f\n", ((float)clock() - start) * 1000 / CLOCKS_PER_SEC);
-    assert(Validate(root));
-    // printf("Test passed!\n");
-    //
-    // for (float p_geo = 0.1; p_geo <= 0.9; p_geo = p_geo + 0.1) {
-    //     int min = INT_MAX;
-    //     float best_p_splay = 0;
-    //     for (float p_splay = 0; p_splay <= 1; p_splay = p_splay + 0.1) {
-    //         printf("Uniform with P(splay)=%.1f\n", p_splay);
-    //         Node *root = PerfectTree(h);
-    //         clock_t start = clock();
-    //         for (int i = 0; i < 10000000; i++) {
-    //             key = Geometric(p_geo, n);
-    //             node = Find(root, key);
-    //             root = ProbSplay3(root, node, p_splay);
-    //             // assert(root->key == key);
-    //             // assert(Validate(node));
-    //         }
-    //         // for (int i = 0; i <= n; i++) {
-    //         //     assert(Find(root, key));
-    //         // }
-    //         float msec = (clock() - start) * 1000 / CLOCKS_PER_SEC;
-    //         if (msec < min) {
-    //             min = msec;
-    //             best_p_splay = p_splay;
-    //         }
-    //         // printf("Test passed!\n");
-    //         // printf("Duration: %.3f sec\n", msec / 1000);
-    //     }
-    //     printf("For p_geo=%.2f, best p_splay=%.2f\n\n", p_geo, best_p_splay);
-    // }
+    printf("Splay: %.4f\n", (duration / CLOCKS_PER_SEC));
+    printf("\n\n");
+
+    for (int exponent = -1; exponent >= -10; exponent--) {
+        p = pow(2, exponent);
+        duration = 0;
+        for (int j = 0; j < 100; j++) {
+            RANDSPLAY1_SPLAYING = 1;
+            start = clock();
+            for (int i = 0; i < num_samples; i++) {
+                node = Find(root, samples[i]);
+                root = RandSplay1(root, node, p);
+            }
+            end = clock();
+            duration += (end - start);
+        }
+        printf("RandSplay1 with 2^%d: %.4f\n", exponent, (duration / CLOCKS_PER_SEC));
+    }
+    printf("\n\n");
+
+    for (int exponent = -1; exponent >= -10; exponent--) {
+        p = pow(2, exponent);
+        duration = 0;
+        for (int j = 0; j < 100; j++) {
+            start = clock();
+            for (int i = 0; i < num_samples; i++) {
+                node = Find(root, samples[i]);
+                root = RandSplay2(root, node, p);
+            }
+            end = clock();
+            duration += (end - start);
+        }
+        printf("RandSplay2 with 2^%d: %.4f\n", exponent, (duration / CLOCKS_PER_SEC));
+    }
+    printf("\n\n");
+
+    for (int exponent = -1; exponent >= -10; exponent--) {
+        p = pow(2, exponent);
+        duration = 0;
+        for (int j = 0; j < 100; j++) {
+            start = clock();
+            for (int i = 0; i < num_samples; i++) {
+                node = Find(root, samples[i]);
+                root = RandSplay3(root, node, p);
+            }
+            end = clock();
+            duration += (end - start);
+        }
+        printf("RandSplay3 with 2^%d: %.4f\n", exponent, (duration / CLOCKS_PER_SEC));
+    }
+    printf("\n\n");
+
+    for (int exponent = -1; exponent >= -10; exponent--) {
+        p = pow(2, exponent);
+        duration = 0;
+        for (int j = 0; j < 100; j++) {
+            start = clock();
+            for (int i = 0; i < num_samples; i++) {
+                node = Find(root, samples[i]);
+                root = RandSplay4(root, node, p);
+            }
+            end = clock();
+            duration += (end - start);
+        }
+        printf("RandSplay4 with 2^%d: %.4f\n", exponent, (duration / CLOCKS_PER_SEC));
+    }
+    printf("\n\n");
+
     return 0;
 }
