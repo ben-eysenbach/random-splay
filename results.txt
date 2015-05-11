@@ -1,0 +1,53 @@
+Building tree
+Generating samples
+Starting tests
+Splay: 213.0085
+
+
+RandSplay1 with 2^-1: 67.8157
+RandSplay1 with 2^-2: 70.5716
+RandSplay1 with 2^-3: 71.1186
+RandSplay1 with 2^-4: 71.5175
+RandSplay1 with 2^-5: 71.1962
+RandSplay1 with 2^-6: 71.1582
+RandSplay1 with 2^-7: 71.3919
+RandSplay1 with 2^-8: 74.3924
+RandSplay1 with 2^-9: 71.1868
+RandSplay1 with 2^-10: 69.1606
+
+
+RandSplay2 with 2^-1: 144.7972
+RandSplay2 with 2^-2: 111.0207
+RandSplay2 with 2^-3: 91.6139
+RandSplay2 with 2^-4: 88.3024
+RandSplay2 with 2^-5: 77.4494
+RandSplay2 with 2^-6: 75.6040
+RandSplay2 with 2^-7: 74.8931
+RandSplay2 with 2^-8: 73.1489
+RandSplay2 with 2^-9: 74.9089
+RandSplay2 with 2^-10: 69.9218
+
+
+RandSplay3 with 2^-1: 209.0213
+RandSplay3 with 2^-2: 170.6345
+RandSplay3 with 2^-3: 152.6074
+RandSplay3 with 2^-4: 137.9036
+RandSplay3 with 2^-5: 127.7553
+RandSplay3 with 2^-6: 124.3814
+
+RandSplay3 with 2^-7: 117.1521
+RandSplay3 with 2^-8: 120.6060
+RandSplay3 with 2^-9: 122.9760
+RandSplay3 with 2^-10: 121.8070
+
+
+RandSplay4 with 2^-1: 139.4108
+RandSplay4 with 2^-2: 190.4780
+RandSplay4 with 2^-3: 215.6632
+RandSplay4 with 2^-4: 216.5675
+RandSplay4 with 2^-5: 196.7062
+RandSplay4 with 2^-6: 195.0340
+RandSplay4 with 2^-7: 190.0399
+RandSplay4 with 2^-8: 180.7443
+RandSplay4 with 2^-9: 184.8084
+RandSplay4 with 2^-10: 185.6626
